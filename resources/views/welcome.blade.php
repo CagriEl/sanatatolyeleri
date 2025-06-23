@@ -61,13 +61,17 @@
         <img src="{{ asset('images/logo.png') }}" alt="Logo" class="logo">
 
         <a href="{{ url('/basvuru') }}">
-            <img src="{{ asset('images/yaza-hareketli.jpg') }}" alt="Başvuru" class="banner-img">
+            <picture>
+                {{-- Mobilde dikey görsel --}}
+                <source media="(max-width: 576px)" srcset="{{ asset('images/dikeygorsel.jpg') }}">
+                {{-- Masaüstünde yatay görsel --}}
+                <img
+                    src="{{ asset('images/yaza-hareketli.jpg') }}"
+                    alt="Başvuru"
+                    class="banner-img"
+                >
+            </picture>
         </a>
     </div>
-        </div> <!-- container-fluid veya card kapanışı -->
-
-</body>
-</html>
-
 </body>
 </html>

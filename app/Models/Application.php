@@ -6,10 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Application extends Model
 {
-    public function educationProgram()
-    {
-        return $this->belongsTo(EducationProgram::class);
-    }
+   
    protected $fillable = [
     'first_name',
     'last_name',
@@ -21,7 +18,13 @@ class Application extends Model
     'education_program_id',
     'signature', // 🟢 bu satır olmalı
     'is_approved',
+    'email',
 ];
+
+ public function educationProgram()
+    {
+        return $this->belongsTo(EducationProgram::class);
+    }
 
 
 }

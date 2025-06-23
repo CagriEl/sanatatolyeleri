@@ -39,6 +39,10 @@ class ApplicationResource extends Resource
         ->schema([
             Forms\Components\TextInput::make('first_name')->label('Ad'),
             Forms\Components\TextInput::make('last_name')->label('Soyad'),
+            Forms\Components\TextInput::make('email')
+            ->label('E-Posta')
+            ->email()
+            ->required(),
             Forms\Components\TextInput::make('tc_no')->label('TC No'),
             Forms\Components\DatePicker::make('birth_date')->label('Doğum Tarihi'),
             Forms\Components\TextInput::make('phone')->label('Telefon'),
@@ -61,13 +65,14 @@ class ApplicationResource extends Resource
 {
     return $table
         ->columns([
-            TextColumn::make('educationProgram.title')->label('Eğitim'),
             TextColumn::make('first_name')->label('Ad'),
             TextColumn::make('last_name')->label('Soyad'),
+            TextColumn::make('email')->label('E-Posta'),
+            TextColumn::make('educationProgram.title')->label('Eğitim'),
             TextColumn::make('tc_no')->label('TC'),
             TextColumn::make('phone')->label('Telefon'),
-            TextColumn::make('parent_name')->label('Veli Ad Soyad'),
-            TextColumn::make('parent_phone')->label('Veli Telefon'),
+            // TextColumn::make('parent_name')->label('Veli Ad Soyad'),
+            // TextColumn::make('parent_phone')->label('Veli Telefon'),
             BooleanColumn::make('is_approved')->label('Onaylı mı?'),
         ])
         ->filters([

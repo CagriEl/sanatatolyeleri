@@ -15,4 +15,14 @@ class EducationProgram extends Model
         'capacity',
         'is_open',
     ];
+
+     public function applications()
+    {
+        return $this->hasMany(Application::class);
+    }
+    // Dinamik olarak “dolu mu” kontrol etmek istersen:
+     public function getIsFullAttribute(): bool
+    {
+        return $this->applications()->count() >= $this->capacity;
+    }
 }
