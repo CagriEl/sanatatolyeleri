@@ -145,14 +145,14 @@
                     </div>
 
                     <div class="mt-3">
-                        <select name="education_program_id" class="form-select" required>
+                            <select name="education_program_id" class="form-select" required>
                             <option value="">-- Eğitim Programı Seçin --</option>
-                            @foreach ($programs as $program)
-                                <option value="{{ $program->id }}" {{ !$program->is_open ? 'disabled' : '' }}>
-                                    {{ $program->title }} ({{ $program->age_range }}) - {{ $program->is_open ? 'Açık' : 'Kontenjan Doldu' }}
-                                </option>
-                            @endforeach
-                        </select>
+                        @foreach ($programs as $program)
+                            <option value="{{ $program->id }}">
+                            {{ $program->title }} ({{ $program->age_range }})
+                            </option>
+                        @endforeach
+</select>
                     </div>
 <style>
     .kvkk-link {

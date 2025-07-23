@@ -10,8 +10,9 @@ class ApplicationController extends Controller
 {
     public function create()
     {
-        $programs = EducationProgram::where('is_open', true)->get();
-        return view('application.create', compact('programs'));
+     $programs = EducationProgram::where('is_open', true)->get();
+    return view('application.create', compact('programs'));
+        
     }
 
     public function store(Request $request)
