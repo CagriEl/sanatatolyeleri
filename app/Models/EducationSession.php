@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+
 class EducationSession extends Model
 {
     use HasFactory;
@@ -39,4 +40,20 @@ class EducationSession extends Model
     {
         return $this->registered >= $this->quota;
     }
+
+    protected static function booted()
+{
+    static::creating(function ($session) {
+        if (empty($session->time_range) && $session->start_time && $session->end_time) {
+            $session->time_range = $session->start_time.' - '.$session->end_time;
+        }
+    });
+
+    static::updating(function ($session) {
+        if ($session->isDirty(['start_time', 'end_time'])) {
+            $session->time_range = $session->start_time.' - '.$session->end_time;
+        }
+    });
+}
+
 }

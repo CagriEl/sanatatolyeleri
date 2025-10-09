@@ -18,6 +18,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportAction as ExcelExportAction;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
+use App\Models\EducationSession;
 use Maatwebsite\Excel\Excel;
 
 class ApplicationResource extends Resource
@@ -44,8 +45,22 @@ class ApplicationResource extends Resource
                 ->label('Eğitim Programı')
                 ->relationship('educationProgram', 'title'),
             Select::make('session_id')
-                ->label('Saat Aralığı')
-                ->relationship('session', 'time_range'),
+    ->label('Saat Aralığı')
+    ->options(function () {
+        return EducationSession::query()
+            ->orderBy('start_time')
+            ->get()
+            ->mapWithKeys(function ($s) {
+                $label = $s->time_range
+                    ?: (($s->start_time && $s->end_time)
+                        ? ($s->start_time.' - '.$s->end_time)
+                        : 'Saat bilgisi yok');
+                return [$s->id => (string) $label]; // 🔒 her koşulda string
+            })
+            ->toArray();
+    })
+    ->searchable()
+    ->required(),
             Forms\Components\Toggle::make('is_approved')->label('Onay Durumu'),
             View::make('components.signature-preview')
                 ->label('İmza Önizleme')

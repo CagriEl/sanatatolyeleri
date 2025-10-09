@@ -14,16 +14,15 @@ return new class extends Migration
     Schema::create('education_sessions', function (Blueprint $table) {
         $table->id();
         $table->foreignId('education_program_id')->constrained()->onDelete('cascade');
+        $table->string('time_range')->nullable();
         $table->time('start_time');
         $table->time('end_time');
         $table->integer('quota')->default(10);
         $table->integer('registered')->default(0);
-        $table->integer('sort')->nullable(); // 🔹 Bu satırı ekledik
+        $table->integer('sort')->nullable(); 
         $table->timestamps();
     });
 }
-
-
 
     /**
      * Reverse the migrations.
