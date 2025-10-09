@@ -1,35 +1,39 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <title>Onaylı Başvurular</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 12px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #999; padding: 6px; text-align: left; }
-        th { background: #f0f0f0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { border: 1px solid #444; padding: 4px; text-align: left; }
+        th { background-color: #eee; }
+        h1 { font-size: 18px; }
     </style>
 </head>
 <body>
-    <h2>Onaylı Başvurular</h2>
+    <h1>Onaylı Başvurular</h1>
+
     <table>
         <thead>
             <tr>
+                <th>#</th>
                 <th>Ad Soyad</th>
-                <th>TC</th>
-                <th>Telefon</th>
-                <th>Veli</th>
+                <th>E-Posta</th>
+                <th>TC No</th>
                 <th>Program</th>
+                <th>Yaş Aralığı</th>
             </tr>
         </thead>
         <tbody>
-            @foreach ($applications as $app)
+            @foreach($applications as $i => $app)
                 <tr>
+                    <td>{{ $i + 1 }}</td>
                     <td>{{ $app->first_name }} {{ $app->last_name }}</td>
+                    <td>{{ $app->email }}</td>
                     <td>{{ $app->tc_no }}</td>
-                    <td>{{ $app->phone }}</td>
-                    <td>{{ $app->parent_name }} ({{ $app->parent_phone }})</td>
-                    <td>{{ $app->educationProgram->title ?? '-' }}</td>
+                    <td>{{ $app->educationProgram->title }}</td>
+                    <td>{{ $app->educationProgram->age_range }} Yaş</td>
                 </tr>
             @endforeach
         </tbody>

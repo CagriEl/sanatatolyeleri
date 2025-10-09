@@ -13,16 +13,12 @@ use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BooleanColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Actions\Action;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\ApplicationApprovedMail;
-use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\View;
 use Barryvdh\DomPDF\Facade\Pdf;
-
-
+use pxlrbt\FilamentExcel\Actions\Tables\ExportAction as ExcelExportAction;
+use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
+use Maatwebsite\Excel\Excel;
 
 class ApplicationResource extends Resource
 {
@@ -34,82 +30,78 @@ class ApplicationResource extends Resource
     protected static ?string $modelLabel = 'Kayıt';
 
     public static function form(Forms\Form $form): Forms\Form
-{
-    return $form
-        ->schema([
-            Forms\Components\TextInput::make('first_name')->label('Ad'),
-            Forms\Components\TextInput::make('last_name')->label('Soyad'),
-            Forms\Components\TextInput::make('tc_no')->label('TC No'),
-            Forms\Components\DatePicker::make('birth_date')->label('Doğum Tarihi'),
-            Forms\Components\TextInput::make('phone')->label('Telefon'),
-            Forms\Components\TextInput::make('parent_name')->label('Veli Adı'),
-            Forms\Components\TextInput::make('parent_phone')->label('Veli Telefonu'),
-            Forms\Components\Select::make('education_program_id')
+    {
+        return $form->schema([
+            TextInput::make('first_name')->label('Ad'),
+            TextInput::make('last_name')->label('Soyad'),
+            TextInput::make('email')->label('E-Posta')->email()->required(),
+            TextInput::make('tc_no')->label('TC No'),
+            DatePicker::make('birth_date')->label('Doğum Tarihi'),
+            TextInput::make('phone')->label('Telefon'),
+            TextInput::make('parent_name')->label('Veli Adı'),
+            TextInput::make('parent_phone')->label('Veli Telefonu'),
+            Select::make('education_program_id')
                 ->label('Eğitim Programı')
                 ->relationship('educationProgram', 'title'),
+            Select::make('session_id')
+                ->label('Saat Aralığı')
+                ->relationship('session', 'time_range'),
             Forms\Components\Toggle::make('is_approved')->label('Onay Durumu'),
-
-            // 👇 Bu satır, base64 imza verisini gösterir (geçici kontrol için)
-           View::make('components.signature-preview')
-    ->label('İmza Önizleme')
-    ->visible(fn ($record) => filled($record?->signature))
-    ->columnSpanFull(),
+            View::make('components.signature-preview')
+                ->label('İmza Önizleme')
+                ->visible(fn ($record) => filled($record?->signature))
+                ->columnSpanFull(),
         ]);
-        
-}
+    }
+
     public static function table(Tables\Table $table): Tables\Table
-{
-    return $table
-        ->columns([
-            TextColumn::make('educationProgram.title')->label('Eğitim'),
-            TextColumn::make('first_name')->label('Ad'),
-            TextColumn::make('last_name')->label('Soyad'),
-            TextColumn::make('tc_no')->label('TC'),
-            TextColumn::make('phone')->label('Telefon'),
-            TextColumn::make('parent_name')->label('Veli Ad Soyad'),
-            TextColumn::make('parent_phone')->label('Veli Telefon'),
-            BooleanColumn::make('is_approved')->label('Onaylı mı?'),
-        ])
-        ->filters([
-            SelectFilter::make('education_program_id')
-                ->label('Eğitim Programı')
-                ->relationship('educationProgram', 'title'),
-        ]);
-        
-}
-
+    {
+        return $table
+            ->columns([
+                TextColumn::make('first_name')->label('Ad'),
+                TextColumn::make('last_name')->label('Soyad'),
+                TextColumn::make('email')->label('E-Posta'),
+                TextColumn::make('educationProgram.title')->label('Eğitim'),
+                TextColumn::make('session.time_range')->label('Saat Aralığı'),
+                TextColumn::make('tc_no')->label('TC'),
+                TextColumn::make('phone')->label('Telefon'),
+                BooleanColumn::make('is_approved')->label('Onaylı mı?'),
+            ])
+            ->filters([
+                SelectFilter::make('education_program_id')
+                    ->label('Eğitim Programı')
+                    ->relationship('educationProgram', 'title'),
+            ])
+            ->headerActions([
+                ExcelExportAction::make('export-xlsx')
+                    ->label('Excel Dışa Aktar')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->exports([
+                        ExcelExport::make('Kayıtlar')
+                            ->fromTable()
+                            ->withWriterType(Excel::XLSX)
+                            ->withFilename(fn () => 'BasvuruListesi_' . now()->format('Y-m-d_H-i')),
+                    ]),
+            ])
+            ->bulkActions([
+                Tables\Actions\DeleteBulkAction::make(),
+                ExportBulkAction::make('export-selected')
+                    ->label('Seçilileri Dışa Aktar')
+                    ->exports([
+                        ExcelExport::make('Seçililer')
+                            ->fromTable()
+                            ->withWriterType(Excel::XLSX)
+                            ->withFilename(fn () => 'BasvuruListesi_Secili_' . now()->format('Y-m-d_H-i')),
+                    ]),
+            ]);
+    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListApplications::route('/'),
+            'index'  => Pages\ListApplications::route('/'),
             'create' => Pages\CreateApplication::route('/create'),
-            'edit' => Pages\EditApplication::route('/{record}/edit'),
+            'edit'   => Pages\EditApplication::route('/{record}/edit'),
         ];
     }
-    
-    public static function getHeaderActions(): array
-{
-    return [
-        Action::make('pdf-export')
-            ->label('Onaylı Başvuruları PDF İndir')
-            ->icon('heroicon-o-arrow-down-tray')
-            ->color('success')
-            ->action(function () {
-                $applications = \App\Models\Application::with('educationProgram')
-                    ->where('is_approved', true)
-                    ->get();
-
-                $pdf = Pdf::loadView('exports.applications_pdf', [
-                    'applications' => $applications
-                ]);
-
-                return response()->streamDownload(
-                    fn () => print($pdf->stream()),
-                    'onayli-basvurular.pdf'
-                );
-            }),
-    ];
-}
-
 }
