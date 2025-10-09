@@ -10,6 +10,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TimePicker;
+use Filament\Forms\Components\Select;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -47,7 +48,8 @@ class EducationProgramResource extends Resource
                     ->label('Yaş Aralığı')
                     ->required()
                     ->maxLength(255),
-                    TextInput::make('capacity')
+
+                TextInput::make('capacity')
                     ->label('Kapasite')
                     ->required()
                     ->numeric()
@@ -56,11 +58,24 @@ class EducationProgramResource extends Resource
                 Toggle::make('is_open')
                     ->label('Başvuruya Açık mı?'),
 
-                // ⏰ Saat Aralıkları Repeater Alanı
+                // 🕒 Saat Aralıkları ve Gün Seçimi
                 Repeater::make('sessions')
                     ->label('Saat Aralıkları')
                     ->relationship()
                     ->schema([
+                        Select::make('day')
+                            ->label('Kurs Günü')
+                            ->options([
+                                'Pazartesi' => 'Pazartesi',
+                                'Salı' => 'Salı',
+                                'Çarşamba' => 'Çarşamba',
+                                'Perşembe' => 'Perşembe',
+                                'Cuma' => 'Cuma',
+                                'Cumartesi' => 'Cumartesi',
+                                'Pazar' => 'Pazar',
+                            ])
+                            ->required(),
+
                         TimePicker::make('start_time')
                             ->label('Başlangıç Saati')
                             ->required(),

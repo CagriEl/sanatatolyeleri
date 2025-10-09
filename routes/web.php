@@ -10,3 +10,5 @@ Route::get('/', function () {
 Route::get('/basvuru', [ApplicationController::class, 'create']);
 Route::post('/basvuru', [ApplicationController::class, 'store']);
 Route::get('/sessions/{program}', [ApplicationController::class, 'getSessions']);
+
+

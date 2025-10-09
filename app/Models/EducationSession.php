@@ -5,27 +5,28 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-
 class EducationSession extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'education_program_id',
+        'day',              // 🟢 Bu satır çok önemli
         'start_time',
         'end_time',
         'quota',
         'registered',
-        'current_count',
     ];
-
-    protected $appends = ['time_range'];
 
     public function educationProgram()
     {
         return $this->belongsTo(EducationProgram::class);
     }
 
+    public function applications()
+    {
+        return $this->hasMany(Application::class, 'session_id');
+    }
  public function getTimeRangeAttribute()
 {
     // Eğer start_time ve end_time varsa

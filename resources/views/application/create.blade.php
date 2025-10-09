@@ -163,7 +163,7 @@ document.getElementById('education_program_id').addEventListener('change', funct
                 data.forEach(sess => {
                     const opt = document.createElement('option');
                     opt.value = sess.id;
-                    opt.text = `${sess.time_range} — (${sess.registered}/${sess.quota})`;
+                    opt.text = `${sess.day} - ${sess.time_range} — (${sess.registered}/${sess.quota})`;
                     if (sess.is_full) {
                         opt.disabled = true;
                         opt.text += ' ❌ Kontenjan Dolu';

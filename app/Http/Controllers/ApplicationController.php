@@ -55,27 +55,29 @@ class ApplicationController extends Controller
     }
 
     // 📊 Saat aralıklarını JSON olarak döndür (ön form için)
-    public function getSessions($educationProgramId)
-    {
-        $sessions = DB::table('education_sessions')
-            ->where('education_program_id', $educationProgramId)
-            ->select('id', 'start_time', 'end_time', 'quota')
-            ->orderBy('start_time', 'asc')
-            ->get()
-            ->map(function ($s) {
-                $registered = Application::where('session_id', $s->id)->count();
-                $quota = (int) $s->quota;
-                $is_full = $registered >= $quota;
+   public function getSessions($educationProgramId)
+{
+    $sessions = DB::table('education_sessions')
+        ->where('education_program_id', $educationProgramId)
+        ->select('id', 'day', 'start_time', 'end_time', 'quota') // 🟢 day alanı eklendi
+        ->orderBy('start_time', 'asc')
+        ->get()
+        ->map(function ($s) {
+            $registered = \App\Models\Application::where('session_id', $s->id)->count();
+            $quota = (int) $s->quota;
+            $is_full = $registered >= $quota;
 
-                return [
-                    'id' => $s->id,
-                    'time_range' => substr($s->start_time, 0, 5) . ' - ' . substr($s->end_time, 0, 5),
-                    'quota' => $quota,
-                    'registered' => $registered,
-                    'is_full' => $is_full,
-                ];
-            });
+            return [
+                'id' => $s->id,
+                'day' => $s->day ?? 'Gün Belirtilmemiş', // 🟢 Formda görünsün
+                'time_range' => substr($s->start_time, 0, 5) . ' - ' . substr($s->end_time, 0, 5),
+                'quota' => $quota,
+                'registered' => $registered,
+                'is_full' => $is_full,
+            ];
+        });
 
-        return response()->json($sessions);
-    }
+    return response()->json($sessions);
+}
+
 }

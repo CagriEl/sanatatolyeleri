@@ -66,7 +66,7 @@
                 <source media="(max-width: 576px)" srcset="{{ asset('images/dikeygorsel.jpg') }}">
                 {{-- Masaüstünde yatay görsel --}}
                 <img
-                    src="{{ asset('images/yaza-hareketli.jpg') }}"
+                    src="{{ asset('images/kis-atolye.webp') }}"
                     alt="Başvuru"
                     class="banner-img"
                 >
