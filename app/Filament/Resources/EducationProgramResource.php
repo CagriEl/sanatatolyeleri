@@ -47,6 +47,11 @@ class EducationProgramResource extends Resource
                     ->label('Yaş Aralığı')
                     ->required()
                     ->maxLength(255),
+                    TextInput::make('capacity')
+                    ->label('Kapasite')
+                    ->required()
+                    ->numeric()
+                    ->minValue(1),
 
                 Toggle::make('is_open')
                     ->label('Başvuruya Açık mı?'),
