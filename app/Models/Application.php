@@ -34,4 +34,17 @@ public function session()
 
 
 }
+
+protected static function booted()
+{
+    static::deleted(function ($application) {
+        if ($application->session_id) {
+            $session = \App\Models\EducationSession::find($application->session_id);
+            if ($session) {
+                $session->current_count = \App\Models\Application::where('session_id', $session->id)->count();
+                $session->save();
+            }
+        }
+    });
+}
 }

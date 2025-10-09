@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ApplicationResource\Pages;
 use App\Models\Application;
+use App\Models\EducationSession;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -13,12 +14,12 @@ use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BooleanColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Forms\Components\View;
+use Filament\Tables\Actions\Action;
 use Barryvdh\DomPDF\Facade\Pdf;
-use pxlrbt\FilamentExcel\Actions\Tables\ExportAction as ExcelExportAction;
-use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
+
+// Excel export
+use pxlrbt\FilamentExcel\Actions\Tables\ExportAction;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
-use App\Models\EducationSession;
 use Maatwebsite\Excel\Excel;
 
 class ApplicationResource extends Resource
@@ -32,83 +33,98 @@ class ApplicationResource extends Resource
 
     public static function form(Forms\Form $form): Forms\Form
     {
-        return $form->schema([
-            TextInput::make('first_name')->label('Ad'),
-            TextInput::make('last_name')->label('Soyad'),
-            TextInput::make('email')->label('E-Posta')->email()->required(),
-            TextInput::make('tc_no')->label('TC No'),
-            DatePicker::make('birth_date')->label('Doğum Tarihi'),
-            TextInput::make('phone')->label('Telefon'),
-            TextInput::make('parent_name')->label('Veli Adı'),
-            TextInput::make('parent_phone')->label('Veli Telefonu'),
-            Select::make('education_program_id')
-                ->label('Eğitim Programı')
-                ->relationship('educationProgram', 'title'),
-            Select::make('session_id')
-    ->label('Saat Aralığı')
-    ->options(function () {
-        return EducationSession::query()
-            ->orderBy('start_time')
-            ->get()
-            ->mapWithKeys(function ($s) {
-                $label = $s->time_range
-                    ?: (($s->start_time && $s->end_time)
-                        ? ($s->start_time.' - '.$s->end_time)
-                        : 'Saat bilgisi yok');
-                return [$s->id => (string) $label]; // 🔒 her koşulda string
-            })
-            ->toArray();
-    })
-    ->searchable()
-    ->required(),
-            Forms\Components\Toggle::make('is_approved')->label('Onay Durumu'),
-            View::make('components.signature-preview')
-                ->label('İmza Önizleme')
-                ->visible(fn ($record) => filled($record?->signature))
-                ->columnSpanFull(),
-        ]);
+        return $form
+            ->schema([
+                TextInput::make('first_name')->label('Ad'),
+                TextInput::make('last_name')->label('Soyad'),
+                TextInput::make('email')->label('E-Posta')->email()->required(),
+                TextInput::make('tc_no')->label('TC No'),
+                DatePicker::make('birth_date')->label('Doğum Tarihi'),
+                TextInput::make('phone')->label('Telefon'),
+                TextInput::make('parent_name')->label('Veli Adı'),
+                TextInput::make('parent_phone')->label('Veli Telefonu'),
+
+                Select::make('education_program_id')
+                    ->label('Eğitim Programı')
+                    ->relationship('educationProgram', 'title')
+                    ->reactive()
+                    ->afterStateUpdated(fn (callable $set) => $set('session_id', null)),
+
+                Select::make('session_id')
+                    ->label('Saat Aralığı')
+                    ->options(fn (callable $get) =>
+                        $get('education_program_id')
+                            ? EducationSession::where('education_program_id', $get('education_program_id'))
+                                ->orderBy('start_time')
+                                ->get()
+                                ->mapWithKeys(fn ($s) => [
+                                    $s->id => substr($s->start_time, 0, 5) . ' - ' . substr($s->end_time, 0, 5),
+                                ])
+                            : []
+                    )
+                    ->searchable()
+                    ->required(),
+
+                Forms\Components\Toggle::make('is_approved')->label('Onay Durumu'),
+            ]);
     }
 
     public static function table(Tables\Table $table): Tables\Table
     {
         return $table
             ->columns([
-                TextColumn::make('first_name')->label('Ad'),
-                TextColumn::make('last_name')->label('Soyad'),
-                TextColumn::make('email')->label('E-Posta'),
-                TextColumn::make('educationProgram.title')->label('Eğitim'),
-                TextColumn::make('session.time_range')->label('Saat Aralığı'),
-                TextColumn::make('tc_no')->label('TC'),
-                TextColumn::make('phone')->label('Telefon'),
-                BooleanColumn::make('is_approved')->label('Onaylı mı?'),
+                TextColumn::make('first_name')->label('Ad')->searchable(),
+                TextColumn::make('last_name')->label('Soyad')->searchable(),
+                TextColumn::make('email')->label('E-Posta')->searchable(),
+                TextColumn::make('educationProgram.title')->label('Eğitim')->toggleable(),
+                TextColumn::make('session')
+                    ->label('Saat Aralığı')
+                    ->getStateUsing(fn ($record) =>
+                        $record->session
+                            ? substr($record->session->start_time, 0, 5) . ' - ' . substr($record->session->end_time, 0, 5)
+                            : '-'
+                    )
+                    ->toggleable(),
+                TextColumn::make('tc_no')->label('TC')->toggleable(),
+                TextColumn::make('phone')->label('Telefon')->toggleable(),
+                BooleanColumn::make('is_approved')->label('Onaylı mı?')->toggleable(),
+                TextColumn::make('created_at')->label('Kayıt Tarihi')->dateTime('d.m.Y H:i')->toggleable(isToggledHiddenByDefault: true),
             ])
+
             ->filters([
                 SelectFilter::make('education_program_id')
                     ->label('Eğitim Programı')
                     ->relationship('educationProgram', 'title'),
+
+                SelectFilter::make('session_id')
+                    ->label('Saat Aralığı')
+                    ->options(fn () =>
+                        EducationSession::orderBy('start_time')
+                            ->get()
+                            ->mapWithKeys(fn ($s) => [
+                                $s->id => substr($s->start_time, 0, 5) . ' - ' . substr($s->end_time, 0, 5),
+                            ])
+                    )
+                    ->searchable()
+                    ->preload(),
             ])
+
+            // 📥 Tablo üstünde "Filtreli Excel İndir" butonu
             ->headerActions([
-                ExcelExportAction::make('export-xlsx')
-                    ->label('Excel Dışa Aktar')
-                    ->icon('heroicon-o-arrow-down-tray')
+                ExportAction::make('excel-export')
+                    ->label('Filtreli Excel İndir')
+                    ->color('success')
+                    ->icon('heroicon-o-document-arrow-down')
                     ->exports([
                         ExcelExport::make('Kayıtlar')
+                            // tablodaki aktif filtreler & arama otomatik uygulanır
                             ->fromTable()
                             ->withWriterType(Excel::XLSX)
-                            ->withFilename(fn () => 'BasvuruListesi_' . now()->format('Y-m-d_H-i')),
+                            ->withFilename(fn () => 'basvuru_listesi_' . now()->format('Y-m-d_H-i')),
                     ]),
             ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-                ExportBulkAction::make('export-selected')
-                    ->label('Seçilileri Dışa Aktar')
-                    ->exports([
-                        ExcelExport::make('Seçililer')
-                            ->fromTable()
-                            ->withWriterType(Excel::XLSX)
-                            ->withFilename(fn () => 'BasvuruListesi_Secili_' . now()->format('Y-m-d_H-i')),
-                    ]),
-            ]);
+
+            ->defaultSort('id', 'desc');
     }
 
     public static function getPages(): array
@@ -117,6 +133,30 @@ class ApplicationResource extends Resource
             'index'  => Pages\ListApplications::route('/'),
             'create' => Pages\CreateApplication::route('/create'),
             'edit'   => Pages\EditApplication::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getHeaderActions(): array
+    {
+        return [
+            Action::make('pdf-export')
+                ->label('Onaylı Başvuruları PDF İndir')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('primary')
+                ->action(function () {
+                    $applications = Application::with(['educationProgram', 'session'])
+                        ->where('is_approved', true)
+                        ->get();
+
+                    $pdf = Pdf::loadView('exports.applications_pdf', [
+                        'applications' => $applications,
+                    ]);
+
+                    return response()->streamDownload(
+                        fn () => print($pdf->stream()),
+                        'onayli-basvurular.pdf'
+                    );
+                }),
         ];
     }
 }

@@ -6,64 +6,76 @@ use Illuminate\Http\Request;
 use App\Models\Application;
 use App\Models\EducationProgram;
 use App\Models\EducationSession;
+use Illuminate\Support\Facades\DB;
 
 class ApplicationController extends Controller
 {
-    /**
-     * Başvuru formunu göster.
-     */
+    // 📌 Başvuru formunu göster
     public function create()
     {
         $programs = EducationProgram::where('is_open', true)->get();
         return view('application.create', compact('programs'));
     }
 
-    /**
-     * Başvuru kaydını veritabanına ekle.
-     */
+    // 📌 Başvuruyu kaydet
     public function store(Request $request)
     {
-        // 🔹 Form doğrulama
         $data = $request->validate([
-            'first_name'            => 'required|string|max:255',
-            'last_name'             => 'required|string|max:255',
-            'email'                 => 'required|email|max:255',
-            'tc_no'                 => 'required|digits:11|unique:applications,tc_no',
-            'birth_date'            => 'required|date',
-            'phone'                 => 'required|string|max:20',
-            'parent_name'           => 'required|string|max:255',
-            'parent_phone'          => 'required|string|max:20',
-            'education_program_id'  => 'required|exists:education_programs,id',
-            'session_id'            => 'required|exists:education_sessions,id',
-            'signature'             => 'required|string',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'tc_no' => 'required|digits:11|unique:applications,tc_no',
+            'birth_date' => 'required|date',
+            'phone' => 'required|string|max:20',
+            'parent_name' => 'required|string|max:255',
+            'parent_phone' => 'required|string|max:20',
+            'education_program_id' => 'required|exists:education_programs,id',
+            'session_id' => 'required|exists:education_sessions,id',
+            'signature' => 'required|string',
         ]);
 
-        // 🔹 Seçilen eğitim programını al
-        $program = EducationProgram::findOrFail($data['education_program_id']);
+        $session = EducationSession::find($data['session_id']);
 
-        // 🔹 Seçilen saat aralığını al
-        $session = EducationSession::findOrFail($data['session_id']);
-
-        // 🔹 Kontenjan kontrolü (saat bazlı)
+        // 🔒 Kontenjan kontrolü
         $currentCount = Application::where('session_id', $session->id)->count();
-
         if ($currentCount >= $session->quota) {
             return back()->withErrors([
-                'session_id' => 'Seçtiğiniz saat aralığının kontenjanı dolmuştur. Lütfen başka bir saat seçiniz.',
+                'session_id' => 'Bu saat aralığının kontenjanı dolmuştur. Lütfen başka bir saat seçiniz.'
             ])->withInput();
         }
 
-        // 🔹 Kontenjan kontrolü (program bazlı)
-        $programCount = Application::where('education_program_id', $program->id)->count();
-        if ($programCount >= $program->capacity) {
-            return back()->withErrors([
-                'education_program_id' => 'Bu eğitimin genel kontenjanı dolmuştur. Lütfen başka bir program seçiniz.',
-            ])->withInput();
-        }
+        // 📥 Başvuru kaydı oluştur
+        $application = Application::create($data);
 
-        // 🔹 Başvuru kaydı oluştur
-        Application::create($data);
+        // 🔄 Session kontenjanını güncelle
+        $session->current_count = Application::where('session_id', $session->id)->count();
+        $session->save();
 
         return redirect('/basvuru')->with('success', 'Başvurunuz başarıyla alınmıştır.');
+    }
+
+    // 📊 Saat aralıklarını JSON olarak döndür (ön form için)
+    public function getSessions($educationProgramId)
+    {
+        $sessions = DB::table('education_sessions')
+            ->where('education_program_id', $educationProgramId)
+            ->select('id', 'start_time', 'end_time', 'quota')
+            ->orderBy('start_time', 'asc')
+            ->get()
+            ->map(function ($s) {
+                $registered = Application::where('session_id', $s->id)->count();
+                $quota = (int) $s->quota;
+                $is_full = $registered >= $quota;
+
+                return [
+                    'id' => $s->id,
+                    'time_range' => substr($s->start_time, 0, 5) . ' - ' . substr($s->end_time, 0, 5),
+                    'quota' => $quota,
+                    'registered' => $registered,
+                    'is_full' => $is_full,
+                ];
+            });
+
+        return response()->json($sessions);
     }
 }

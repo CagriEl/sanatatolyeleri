@@ -16,6 +16,7 @@ class EducationSession extends Model
         'end_time',
         'quota',
         'registered',
+        'current_count',
     ];
 
     protected $appends = ['time_range'];
