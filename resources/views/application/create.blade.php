@@ -19,6 +19,15 @@
         .btn-main:hover { background:#1a7bad; }
         .kvkk { font-size:.85rem; background:#f2f2f2; padding:1rem; border-radius:.5rem; margin-bottom:1rem; }
         #signature-pad { width:250px !important; height:100px !important; border:1px solid #ccc; display:block; margin:auto; }
+        .info-box {
+            background: #e8f4fc;
+            border: 1px solid #b8d7f5;
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-top: .75rem;
+            color: #0a4b75;
+            font-size: .9rem;
+        }
     </style>
 </head>
 <body>
@@ -99,9 +108,11 @@
                     <!-- Saat Seçimi (Dinamik) -->
                     <div class="mt-3" id="session_wrapper" style="display:none;">
                         <label for="session_id" class="form-label fw-bold">Saat Aralığı</label>
-                        <select id="session_id" name="session_id" class="form-select" required>
-                            <option value="">-- Saat Seçiniz --</option>
-                        </select>
+                        <select id="session_id" name="session_id" class="form-select"></select>
+                    </div>
+
+                    <div id="info_message" class="info-box" style="display:none;">
+                        Saat ve kontenjan bilgisi <strong>Müdürlüğümüz tarafından belirlenecektir.</strong>
                     </div>
 
                     <div class="kvkk text-muted mt-3">
@@ -139,45 +150,59 @@
     T.C Kırklareli Belediye Başkanlığı<br>Bilgi İşlem Müdürlüğü | Tüm Hakları Saklıdır.
 </footer>
 
-<!-- Dinamik Saat Getirme -->
+<!-- 🧠 Dinamik Saat veya Müdürlük Bilgisi Getirme -->
 <script>
 document.getElementById('education_program_id').addEventListener('change', function() {
     const eduId = this.value;
     const sessionWrapper = document.getElementById('session_wrapper');
     const sessionSelect = document.getElementById('session_id');
+    const infoMessage = document.getElementById('info_message');
 
-    sessionSelect.innerHTML = '<option value="">-- Saat Seçiniz --</option>';
+    sessionSelect.innerHTML = '';
     sessionWrapper.style.display = 'none';
+    infoMessage.style.display = 'none';
 
     if (!eduId) return;
 
-    fetch(`/sessions/${eduId}`)
+    // Önce kursun özel olup olmadığını kontrol et
+    fetch(`/program/${eduId}`)
         .then(res => res.json())
-        .then(data => {
-            if (data.length === 0) {
-                const opt = document.createElement('option');
-                opt.text = 'Bu eğitime ait saat aralığı yok.';
-                opt.disabled = true;
-                sessionSelect.appendChild(opt);
-            } else {
-                data.forEach(sess => {
-                    const opt = document.createElement('option');
-                    opt.value = sess.id;
-                    opt.text = `${sess.day} - ${sess.time_range} — (${sess.registered}/${sess.quota})`;
-                    if (sess.is_full) {
-                        opt.disabled = true;
-                        opt.text += ' ❌ Kontenjan Dolu';
-                    }
-                    sessionSelect.appendChild(opt);
-                });
+        .then(program => {
+            if (program.is_custom_schedule) {
+                infoMessage.style.display = 'block';
+                return; // saat listesini çağırmadan çık
             }
-            sessionWrapper.style.display = 'block';
+
+            // normal kurs için sessionları getir
+            fetch(`/sessions/${eduId}`)
+                .then(res => res.json())
+                .then(data => {
+                    sessionSelect.innerHTML = '<option value="">-- Saat Seçiniz --</option>';
+                    if (data.length === 0) {
+                        const opt = document.createElement('option');
+                        opt.text = 'Bu eğitime ait saat ve tarihler müdürlüğümüzce belirlenecektir.';
+                        opt.disabled = true;
+                        sessionSelect.appendChild(opt);
+                    } else {
+                        data.forEach(sess => {
+                            const opt = document.createElement('option');
+                            opt.value = sess.id;
+                            opt.text = `${sess.time_range} — (${sess.registered}/${sess.quota})`;
+                            if (sess.is_full) {
+                                opt.disabled = true;
+                                opt.text += ' ❌ Kontenjan Dolu';
+                            }
+                            sessionSelect.appendChild(opt);
+                        });
+                    }
+                    sessionWrapper.style.display = 'block';
+                });
         })
         .catch(err => console.error('Fetch hatası:', err));
 });
 </script>
 
-<!-- İmza Alanı Script -->
+<!-- 🖋️ İmza Alanı Script -->
 <script>
 const canvas = document.getElementById('signature-pad');
 const input  = document.getElementById('signature');
@@ -213,13 +238,9 @@ function draw(e) {
     ctx.moveTo(x, y);
     updateSignature();
 }
-function updateSignature() {
-    input.value = canvas.toDataURL('image/png');
-}
-function clearSignature() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    input.value = '';
-}
+function updateSignature() { input.value = canvas.toDataURL('image/png'); }
+function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); input.value = ''; }
+
 canvas.addEventListener('mousedown',  startDraw);
 canvas.addEventListener('touchstart', startDraw);
 canvas.addEventListener('mouseup',    endDraw);

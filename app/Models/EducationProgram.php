@@ -15,6 +15,7 @@ class EducationProgram extends Model
         'age_range',
         'capacity',
         'is_open',
+        'is_custom_schedule',
     ];
 
      public function applications()

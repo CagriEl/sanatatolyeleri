@@ -36,107 +36,108 @@ class EducationProgramResource extends Resource
 
     public static function form(Forms\Form $form): Forms\Form
     {
-        return $form
-            ->schema([
-                // 📘 Eğitim Bilgileri
-                TextInput::make('title')
-                    ->label('Program Adı')
-                    ->required()
-                    ->maxLength(255),
+        return $form->schema([
+            TextInput::make('title')
+                ->label('Program Adı')
+                ->required()
+                ->maxLength(255),
 
-                TextInput::make('age_range')
-                    ->label('Yaş Aralığı')
-                    ->required()
-                    ->maxLength(255),
+            TextInput::make('age_range')
+                ->label('Yaş Aralığı')
+                ->required()
+                ->maxLength(255),
 
-                TextInput::make('capacity')
-                    ->label('Kapasite')
-                    ->required()
-                    ->numeric()
-                    ->minValue(1),
+            TextInput::make('capacity')
+                ->label('Kapasite')
+                ->numeric()
+                ->minValue(1)
+                ->required(),
 
-                Toggle::make('is_open')
-                    ->label('Başvuruya Açık mı?'),
+            Toggle::make('is_open')
+                ->label('Başvuruya Açık mı?'),
 
-                // 🕒 Saat Aralıkları ve Gün Seçimi
-                Repeater::make('sessions')
-                    ->label('Saat Aralıkları')
-                    ->relationship()
-                    ->schema([
-                        Select::make('day')
-                            ->label('Kurs Günü')
-                            ->options([
-                                'Pazartesi' => 'Pazartesi',
-                                'Salı' => 'Salı',
-                                'Çarşamba' => 'Çarşamba',
-                                'Perşembe' => 'Perşembe',
-                                'Cuma' => 'Cuma',
-                                'Cumartesi' => 'Cumartesi',
-                                'Pazar' => 'Pazar',
-                            ])
-                            ->required(),
+            Toggle::make('is_custom_schedule')
+                ->label('Saat ve Kontenjan Müdürlük Tarafından Belirlenecek')
+                ->default(false)
+                ->helperText('Bu seçeneği işaretlerseniz saat aralıkları eklemeniz gerekmez.'),
 
-                        TimePicker::make('start_time')
-                            ->label('Başlangıç Saati')
-                            ->required(),
+            // ⏰ Saat Aralıkları sadece özel olmayan kurslarda gözükecek
+            Repeater::make('sessions')
+                ->label('Saat Aralıkları')
+                ->relationship()
+                ->schema([
+                    Select::make('day')
+                        ->label('Gün')
+                        ->options([
+                            'Pazartesi' => 'Pazartesi',
+                            'Salı' => 'Salı',
+                            'Çarşamba' => 'Çarşamba',
+                            'Perşembe' => 'Perşembe',
+                            'Cuma' => 'Cuma',
+                            'Cumartesi' => 'Cumartesi',
+                            'Pazar' => 'Pazar',
+                        ])
+                        ->required(),
 
-                        TimePicker::make('end_time')
-                            ->label('Bitiş Saati')
-                            ->required(),
+                    TimePicker::make('start_time')
+                        ->label('Başlangıç Saati')
+                        ->required(),
 
-                        TextInput::make('quota')
-                            ->label('Kontenjan')
-                            ->numeric()
-                            ->default(10)
-                            ->required(),
-                    ])
-                    ->orderable()
-                    ->collapsible()
-                    ->createItemButtonLabel('Yeni Saat Aralığı Ekle'),
-            ]);
+                    TimePicker::make('end_time')
+                        ->label('Bitiş Saati')
+                        ->required(),
+
+                    TextInput::make('quota')
+                        ->label('Kontenjan')
+                        ->numeric()
+                        ->default(10)
+                        ->required(),
+                ])
+                ->visible(fn ($get) => ! $get('is_custom_schedule'))
+                ->orderable()
+                ->collapsible()
+                ->createItemButtonLabel('Yeni Saat Aralığı Ekle'),
+        ]);
     }
 
     public static function table(Tables\Table $table): Tables\Table
     {
-        return $table
-            ->columns([
-                TextColumn::make('title')
-                    ->label('Program Adı')
-                    ->searchable(),
+        return $table->columns([
+            TextColumn::make('title')->label('Program Adı')->searchable(),
+            TextColumn::make('age_range')->label('Yaş Aralığı'),
+            TextColumn::make('capacity')->label('Kapasite'),
+            TextColumn::make('applications_count')->label('Başvuru Sayısı')
+                ->suffix(fn ($state, $record) => "/{$record->capacity}"),
 
-                TextColumn::make('age_range')
-                    ->label('Yaş Aralığı')
-                    ->formatStateUsing(fn (string $state): string => "{$state} Yaş"),
+            BadgeColumn::make('is_custom_schedule')
+                ->label('Plan Türü')
+                ->formatStateUsing(fn ($state) => $state ? 'Müdürlük Belirleyecek' : 'Standart Saatli')
+                ->colors([
+                    'info' => fn ($state) => $state,
+                    'success' => fn ($state) => ! $state,
+                ]),
 
-                TextColumn::make('capacity')
-                    ->label('Toplam Kapasite'),
-
-                TextColumn::make('applications_count')
-                    ->label('Başvuru Sayısı')
-                    ->suffix(fn ($state, $record) => "/{$record->capacity}"),
-
-                BadgeColumn::make('is_full')
-                    ->label('Durum')
-                    ->formatStateUsing(fn (bool $state): string => $state ? 'KONTENJAN DOLU' : 'AÇIK')
-                    ->colors([
-                        'danger'  => fn (bool $state): bool => $state,
-                        'success' => fn (bool $state): bool => ! $state,
-                    ]),
-            ])
-            ->actions([
-                EditAction::make(),
-                DeleteAction::make()
-                    ->requiresConfirmation()
-                    ->modalHeading('Eğitim Programını Sil')
-                    ->modalSubheading('Bu programı silmek istediğinize emin misiniz?'),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make()
-                    ->requiresConfirmation()
-                    ->modalHeading('Seçili Programları Sil')
-                    ->modalSubheading('Bu programları kalıcı olarak silmek istediğinizden emin misiniz?'),
-            ])
-            ->defaultSort('id', 'asc');
+            BadgeColumn::make('is_open')
+                ->label('Durum')
+                ->formatStateUsing(fn ($state) => $state ? 'Açık' : 'Kapalı')
+                ->colors([
+                    'success' => fn ($state) => $state,
+                    'danger' => fn ($state) => ! $state,
+                ]),
+        ])
+        ->actions([
+            EditAction::make(),
+            DeleteAction::make()
+                ->requiresConfirmation()
+                ->modalHeading('Eğitim Programını Sil')
+                ->modalSubheading('Bu programı silmek istediğinize emin misiniz?'),
+        ])
+        ->bulkActions([
+            DeleteBulkAction::make()
+                ->requiresConfirmation()
+                ->modalHeading('Seçili Programları Sil')
+                ->modalSubheading('Bu programları kalıcı olarak silmek istediğinizden emin misiniz?'),
+        ]);
     }
 
     public static function getPages(): array
