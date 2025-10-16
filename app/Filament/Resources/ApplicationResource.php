@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ApplicationResource\Pages;
 use App\Models\Application;
 use App\Models\EducationSession;
+use App\Models\EducationProgram;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -49,24 +50,45 @@ class ApplicationResource extends Resource
                     ->relationship('educationProgram', 'title')
                     ->reactive()
                     ->afterStateUpdated(fn (callable $set) => $set('session_id', null)),
-                    
 
                 Select::make('session_id')
                     ->label('Saat Aralığı')
-                    ->options(fn (callable $get) =>
-                        $get('education_program_id')
-                            ? EducationSession::where('education_program_id', $get('education_program_id'))
-                                ->orderBy('start_time')
-                                ->get()
-                                ->mapWithKeys(fn ($s) => [
-                                    $s->id => substr($s->start_time, 0, 5) . ' - ' . substr($s->end_time, 0, 5),
-                                ])
-                            : []
-                    )
-                    ->searchable()
-                    ->required(),
+                    ->options(function (callable $get) {
+                        $programId = $get('education_program_id');
 
-                Forms\Components\Toggle::make('is_approved')->label('Onay Durumu'),
+                        if (!$programId) return [];
+
+                        $program = EducationProgram::find($programId);
+
+                        // Müdürlük belirleyecekse boş döndür
+                        if ($program && $program->is_custom_schedule) {
+                            return [];
+                        }
+
+                        return EducationSession::where('education_program_id', $programId)
+                            ->orderBy('start_time')
+                            ->get()
+                            ->mapWithKeys(fn ($s) => [
+                                $s->id => "{$s->day} | " . substr($s->start_time, 0, 5) . " - " . substr($s->end_time, 0, 5),
+                            ])
+                            ->toArray();
+                    })
+                    ->searchable()
+                    ->nullable() // 👈 Boş bırakılabilir
+                    ->placeholder('Saat seçiniz (isteğe bağlı)')
+                    ->hidden(function (callable $get) {
+    $programId = $get('education_program_id');
+    if (!$programId) {
+        return false;
+    }
+
+    $program = EducationProgram::find($programId);
+    return $program && $program->is_custom_schedule;
+})
+                    ->helperText('Müdürlük belirleyecek kurslarda bu alan boş bırakılabilir.'),
+
+                Forms\Components\Toggle::make('is_approved')
+                    ->label('Onay Durumu'),
             ]);
     }
 
@@ -78,14 +100,16 @@ class ApplicationResource extends Resource
                 TextColumn::make('last_name')->label('Soyad')->searchable(),
                 TextColumn::make('email')->label('E-Posta')->searchable(),
                 TextColumn::make('educationProgram.title')->label('Eğitim')->toggleable(),
+
                 TextColumn::make('session')
                     ->label('Saat Aralığı')
                     ->getStateUsing(fn ($record) =>
                         $record->session
-                            ? substr($record->session->start_time, 0, 5) . ' - ' . substr($record->session->end_time, 0, 5)
-                            : '-'
+                            ? "{$record->session->day} | " . substr($record->session->start_time, 0, 5) . " - " . substr($record->session->end_time, 0, 5)
+                            : 'Müdürlük Belirleyecek'
                     )
                     ->toggleable(),
+
                 TextColumn::make('tc_no')->label('TC')->toggleable(),
                 TextColumn::make('phone')->label('Telefon')->toggleable(),
                 BooleanColumn::make('is_approved')->label('Onaylı mı?')->toggleable(),
@@ -103,14 +127,13 @@ class ApplicationResource extends Resource
                         EducationSession::orderBy('start_time')
                             ->get()
                             ->mapWithKeys(fn ($s) => [
-                                $s->id => substr($s->start_time, 0, 5) . ' - ' . substr($s->end_time, 0, 5),
+                                $s->id => "{$s->day} | " . substr($s->start_time, 0, 5) . " - " . substr($s->end_time, 0, 5),
                             ])
                     )
                     ->searchable()
                     ->preload(),
             ])
 
-            // 📥 Tablo üstünde "Filtreli Excel İndir" butonu
             ->headerActions([
                 ExportAction::make('excel-export')
                     ->label('Filtreli Excel İndir')
@@ -118,7 +141,6 @@ class ApplicationResource extends Resource
                     ->icon('heroicon-o-document-arrow-down')
                     ->exports([
                         ExcelExport::make('Kayıtlar')
-                            // tablodaki aktif filtreler & arama otomatik uygulanır
                             ->fromTable()
                             ->withWriterType(Excel::XLSX)
                             ->withFilename(fn () => 'basvuru_listesi_' . now()->format('Y-m-d_H-i')),
