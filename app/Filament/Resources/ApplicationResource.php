@@ -99,15 +99,32 @@ class ApplicationResource extends Resource
                 TextColumn::make('first_name')->label('Ad')->searchable(),
                 TextColumn::make('last_name')->label('Soyad')->searchable(),
                 TextColumn::make('email')->label('E-Posta')->searchable(),
-                TextColumn::make('educationProgram.title')->label('Eğitim')->toggleable(),
+                TextColumn::make('educationProgram.title')
+                    ->label('Eğitim')
+                    ->description(fn ($record) => $record->educationProgram?->instructor
+                        ? 'Eğitmen: ' . $record->educationProgram->instructor
+                        : null)
+                    ->searchable()
+                    ->toggleable(),
 
                 TextColumn::make('session')
                     ->label('Saat Aralığı')
-                    ->getStateUsing(fn ($record) =>
-                        $record->session
-                            ? "{$record->session->day} | " . substr($record->session->start_time, 0, 5) . " - " . substr($record->session->end_time, 0, 5)
-                            : 'Müdürlük Belirleyecek'
-                    )
+                    ->getStateUsing(function ($record) {
+                        if ($record->session) {
+                            return "{$record->session->day} | " . substr($record->session->start_time, 0, 5) . " - " . substr($record->session->end_time, 0, 5);
+                        }
+
+                        $program = $record->educationProgram;
+                        if ($program && $program->sessions()->count() > 1) {
+                            $sessions = $program->sessions()->orderBy('start_time')->get();
+                            $days = $sessions->pluck('day')->join(' & ');
+                            $first = $sessions->first();
+
+                            return "{$days}: " . substr($first->start_time, 0, 5) . " - " . substr($first->end_time, 0, 5);
+                        }
+
+                        return 'Müdürlük Belirleyecek';
+                    })
                     ->toggleable(),
 
                 TextColumn::make('tc_no')->label('TC')->toggleable(),

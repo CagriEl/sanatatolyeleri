@@ -119,6 +119,8 @@
                         <select id="session_id" name="session_id" class="form-select"></select>
                     </div>
 
+                    <div id="schedule_info" class="info-box" style="display:none;"></div>
+
                     <div id="info_message" class="info-box" style="display:none;">
                         Saat ve kontenjan bilgisi <strong>Müdürlüğümüz tarafından belirlenecektir.</strong>
                     </div>
@@ -165,10 +167,12 @@ document.getElementById('education_program_id').addEventListener('change', funct
     const sessionWrapper = document.getElementById('session_wrapper');
     const sessionSelect = document.getElementById('session_id');
     const infoMessage = document.getElementById('info_message');
+    const scheduleInfo = document.getElementById('schedule_info');
 
     sessionSelect.innerHTML = '';
     sessionWrapper.style.display = 'none';
     infoMessage.style.display = 'none';
+    scheduleInfo.style.display = 'none';
 
     if (!eduId) return;
 
@@ -192,6 +196,18 @@ document.getElementById('education_program_id').addEventListener('change', funct
             fetch(`/sessions/${eduId}`)
                 .then(res => res.json())
                 .then(data => {
+                    const combined = data.length === 1 && data[0].is_combined;
+
+                    if (combined) {
+                        const sess = data[0];
+                        scheduleInfo.innerHTML = `<strong>Eğitim Günleri:</strong> ${sess.time_range}<br>
+                            <strong>Kontenjan:</strong> ${sess.registered}/${sess.quota}
+                            ${sess.is_full ? ' — <strong>Kontenjan Dolu</strong>' : ''}
+                            <br><small class="text-muted">Bu kursa kayıt olan katılımcılar belirtilen tüm günlere kayıt olmuş sayılır.</small>`;
+                        scheduleInfo.style.display = 'block';
+                        return;
+                    }
+
                     sessionSelect.innerHTML = '<option value="">-- Saat Seçiniz --</option>';
                     if (data.length === 0) {
                         const opt = document.createElement('option');

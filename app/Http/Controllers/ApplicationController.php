@@ -38,7 +38,7 @@ class ApplicationController extends Controller
             'signature' => 'required|string',
         ];
 
-        if (!$program->is_custom_schedule) {
+        if (!$program->is_custom_schedule && $program->sessions()->count() <= 1) {
             $rules['session_id'] = 'required|exists:education_sessions,id';
         }
 
@@ -70,7 +70,7 @@ class ApplicationController extends Controller
                     ]);
                 }
 
-                if (!$program->is_custom_schedule && $request->session_id) {
+                if (!$program->is_custom_schedule && $request->session_id && $program->sessions()->count() <= 1) {
                     $session = EducationSession::where('id', $request->session_id)
                         ->where('education_program_id', $program->id)
                         ->firstOrFail();
@@ -84,7 +84,9 @@ class ApplicationController extends Controller
                 }
 
                 $application = new Application($data);
-                $application->session_id = $request->session_id ?? null;
+                $application->session_id = $program->sessions()->count() > 1
+                    ? null
+                    : ($request->session_id ?? null);
                 $application->save();
             });
         } catch (ValidationException $e) {
@@ -114,10 +116,24 @@ class ApplicationController extends Controller
         $programCapacity = (int) $program->capacity;
         $programFull = $programRegistered >= $programCapacity;
 
-        $sessions = $program->sessions()
-            ->orderBy('start_time')
-            ->get()
-            ->map(function ($session) use ($programRegistered, $programCapacity, $programFull) {
+        $sessions = $program->sessions()->orderBy('start_time')->get();
+
+        if ($sessions->count() > 1) {
+            $days = $sessions->pluck('day')->join(' & ');
+            $first = $sessions->first();
+            $timeRange = "{$days}: " . substr($first->start_time, 0, 5) . ' – ' . substr($first->end_time, 0, 5);
+
+            return response()->json([[
+                'id' => null,
+                'time_range' => $timeRange,
+                'quota' => $programCapacity,
+                'registered' => $programRegistered,
+                'is_full' => $programFull,
+                'is_combined' => true,
+            ]]);
+        }
+
+        $sessions = $sessions->map(function ($session) use ($programRegistered, $programCapacity, $programFull) {
                 return [
                     'id' => $session->id,
                     'time_range' => "{$session->day} | " . substr($session->start_time, 0, 5) . " - " . substr($session->end_time, 0, 5),

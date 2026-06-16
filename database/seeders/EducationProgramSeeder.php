@@ -119,7 +119,7 @@ class EducationProgramSeeder extends Seeder
                     ],
                 ],
                 [
-                    'title' => 'Halk Oyunları',
+                    'title' => 'Halk Oyunları — Nebiye Şahiner (7-8 Yaş)',
                     'instructor' => 'Nebiye Şahiner',
                     'age_range' => '7-8',
                     'location' => 'Zübeyde Hanım Kadın Spor Merkezi',
@@ -130,7 +130,7 @@ class EducationProgramSeeder extends Seeder
                     ],
                 ],
                 [
-                    'title' => 'Halk Oyunları',
+                    'title' => 'Halk Oyunları — Aydın Elbasan (9-10 Yaş)',
                     'instructor' => 'Aydın Elbasan',
                     'age_range' => '9-10',
                     'location' => 'Kültür Sanat Evi',
@@ -141,7 +141,7 @@ class EducationProgramSeeder extends Seeder
                     ],
                 ],
                 [
-                    'title' => 'Halk Oyunları',
+                    'title' => 'Halk Oyunları — Aydın Elbasan (18-50 Yaş)',
                     'instructor' => 'Aydın Elbasan',
                     'age_range' => '18-50',
                     'location' => 'Kültür Sanat Evi',
