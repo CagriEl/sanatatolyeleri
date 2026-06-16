@@ -42,9 +42,17 @@ class EducationProgramResource extends Resource
                 ->required()
                 ->maxLength(255),
 
+            TextInput::make('instructor')
+                ->label('Eğitmen')
+                ->maxLength(255),
+
             TextInput::make('age_range')
                 ->label('Yaş Aralığı')
                 ->required()
+                ->maxLength(255),
+
+            TextInput::make('location')
+                ->label('Eğitim Yeri')
                 ->maxLength(255),
 
             TextInput::make('capacity')
@@ -104,10 +112,13 @@ class EducationProgramResource extends Resource
     {
         return $table->columns([
             TextColumn::make('title')->label('Program Adı')->searchable(),
+            TextColumn::make('instructor')->label('Eğitmen')->searchable(),
             TextColumn::make('age_range')->label('Yaş Aralığı'),
+            TextColumn::make('location')->label('Eğitim Yeri'),
             TextColumn::make('capacity')->label('Kapasite'),
-            TextColumn::make('applications_count')->label('Başvuru Sayısı')
-                ->suffix(fn ($state, $record) => "/{$record->capacity}"),
+            TextColumn::make('applications_count')->label('Kontenjan')
+                ->formatStateUsing(fn ($state, $record) => "{$state}/{$record->capacity}")
+                ->suffix(fn ($state, $record) => $state >= $record->capacity ? ' (Dolu)' : ''),
 
             BadgeColumn::make('is_custom_schedule')
                 ->label('Plan Türü')

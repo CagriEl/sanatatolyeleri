@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Atölye Başvuru Formu</title>
+    <title>2026 Yaz Okulu Başvuru Formu</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/x-icon" href="https://kirklareli.bel.tr/dist/media/favicon/favicon.ico">
 
@@ -37,7 +37,7 @@
             <div class="form-card">
                 <div class="logo-wrapper">
                     <img src="{{ asset('images/logo.png') }}" alt="Logo">
-                    <h2>Kırklareli Belediye Başkanlığı<br>Sanat Atölyeleri Başvuru Formu</h2>
+                    <h2>Kırklareli Belediye Başkanlığı<br>Kültür Sanat Evi & AKM 2026 Yaz Okulu<br>Başvuru Formu</h2>
                 </div>
 
                 @if(session('success'))
@@ -98,8 +98,16 @@
                         <select id="education_program_id" name="education_program_id" class="form-select" required>
                             <option value="">-- Eğitim Programı Seçin --</option>
                             @foreach ($programs as $program)
-                                <option value="{{ $program->id }}" {{ !$program->is_open ? 'disabled' : '' }}>
-                                    {{ $program->title }} ({{ $program->age_range }}) - {{ $program->is_open ? 'Açık' : 'Kontenjan Doldu' }}
+                                @php
+                                    $isFull = $program->applications_count >= $program->capacity;
+                                @endphp
+                                <option value="{{ $program->id }}" {{ $isFull ? 'disabled' : '' }}>
+                                    {{ $program->title }}
+                                    @if($program->instructor) — {{ $program->instructor }} @endif
+                                    ({{ $program->age_range }} yaş
+                                    @if($program->location), {{ $program->location }} @endif
+                                    ) — {{ $program->applications_count }}/{{ $program->capacity }}
+                                    @if($isFull) — Kontenjan Dolu @endif
                                 </option>
                             @endforeach
                         </select>
@@ -125,8 +133,8 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">Kırklareli Belediyesi Veli Taahhütnamesi</label>
                         <div class="border rounded p-3 bg-light" style="font-size:.92rem;">
-                            <strong>Sanat Atölyeleri Veli Başvuru Onayı</strong><br><br>
-                            Velisi olduğum çocuğumun yaz/kış faaliyetlerine dair talimatları okudum ve sorumluluğun tarafıma ait olduğunu beyan ederim.
+                            <strong>2026 Yaz Okulu Veli Başvuru Onayı</strong><br><br>
+                            Velisi olduğum çocuğumun 2026 yaz okulu faaliyetlerine dair talimatları okudum ve sorumluluğun tarafıma ait olduğunu beyan ederim.
                         </div>
                     </div>
 
@@ -168,9 +176,16 @@ document.getElementById('education_program_id').addEventListener('change', funct
     fetch(`/program/${eduId}`)
         .then(res => res.json())
         .then(program => {
-            if (program.is_custom_schedule) {
+            if (program.is_full) {
+                infoMessage.textContent = 'Bu kurs için kontenjan dolmuştur. Lütfen başka bir kurs seçiniz.';
                 infoMessage.style.display = 'block';
-                return; // saat listesini çağırmadan çık
+                return;
+            }
+
+            if (program.is_custom_schedule) {
+                infoMessage.innerHTML = 'Saat ve kontenjan bilgisi <strong>Müdürlüğümüz tarafından belirlenecektir.</strong>';
+                infoMessage.style.display = 'block';
+                return;
             }
 
             // normal kurs için sessionları getir
@@ -187,10 +202,10 @@ document.getElementById('education_program_id').addEventListener('change', funct
                         data.forEach(sess => {
                             const opt = document.createElement('option');
                             opt.value = sess.id;
-                            opt.text = `${sess.time_range} — (${sess.registered}/${sess.quota})`;
+                            opt.text = `${sess.time_range} — ${sess.registered}/${sess.quota}`;
                             if (sess.is_full) {
                                 opt.disabled = true;
-                                opt.text += ' ❌ Kontenjan Dolu';
+                                opt.text += ' — Kontenjan Dolu';
                             }
                             sessionSelect.appendChild(opt);
                         });

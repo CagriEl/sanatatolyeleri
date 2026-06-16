@@ -12,7 +12,9 @@ class EducationProgram extends Model
 
     protected $fillable = [
         'title',
+        'instructor',
         'age_range',
+        'location',
         'capacity',
         'is_open',
         'is_custom_schedule',

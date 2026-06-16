@@ -66,8 +66,8 @@
                 <source media="(max-width: 576px)" srcset="{{ asset('images/dikeygorsel.jpg') }}">
                 {{-- Masaüstünde yatay görsel --}}
                 <img
-                    src="{{ asset('images/kis-atolye.webp') }}"
-                    alt="Başvuru"
+                    src="{{ asset('images/yaz-okulu.webp') }}"
+                    alt="2026 Yaz Okulu Başvuru"
                     class="banner-img"
                 >
             </picture>

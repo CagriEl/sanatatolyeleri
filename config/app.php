@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Kırklareli Belediye Başkanlığı Sanat Atölyeleri Başvuru Formu'),
+    'name' => env('APP_NAME', 'Kırklareli Belediye Başkanlığı 2026 Yaz Okulu Başvuru Formu'),
 
     /*
     |--------------------------------------------------------------------------

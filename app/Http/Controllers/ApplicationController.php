@@ -7,32 +7,29 @@ use App\Models\Application;
 use App\Models\EducationProgram;
 use App\Models\EducationSession;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ApplicationController extends Controller
 {
-    /**
-     * Başvuru formunu göster
-     */
     public function create()
     {
-        $programs = EducationProgram::where('is_open', true)->get();
+        $programs = EducationProgram::where('is_open', true)
+            ->withCount('applications')
+            ->orderBy('title')
+            ->get();
+
         return view('application.create', compact('programs'));
     }
 
-    /**
-     * Başvuru kaydını oluştur
-     */
     public function store(Request $request)
     {
-        // Seçilen eğitimi bul
         $program = EducationProgram::findOrFail($request->education_program_id);
 
-        // --- Validation Kuralları ---
         $rules = [
             'first_name' => 'required|string|max:255',
             'last_name'  => 'required|string|max:255',
             'email'      => 'required|email|max:255',
-            'tc_no'      => 'required|digits:11|unique:applications,tc_no',
+            'tc_no'      => 'required|digits:11',
             'birth_date' => 'required|date',
             'phone'      => 'required|string|max:20',
             'parent_name' => 'required|string|max:255',
@@ -41,47 +38,66 @@ class ApplicationController extends Controller
             'signature' => 'required|string',
         ];
 
-        // Eğer kurs "müdürlük tarafından belirlenecek" değilse -> saat zorunlu
         if (!$program->is_custom_schedule) {
             $rules['session_id'] = 'required|exists:education_sessions,id';
         }
 
         $data = $request->validate($rules);
 
-        // --- KONTENJAN KONTROLÜ ---
-        if (!$program->is_custom_schedule && isset($request->session_id)) {
-            $session = EducationSession::find($request->session_id);
-            if ($session) {
-                $registered = Application::where('session_id', $session->id)->count();
+        try {
+            DB::transaction(function () use ($request, $program, $data) {
+                $program = EducationProgram::lockForUpdate()->findOrFail($program->id);
 
-                if ($registered >= $session->quota) {
-                    return back()->withErrors([
-                        'session_id' => 'Seçtiğiniz saat aralığı için kontenjan dolmuştur. Lütfen başka bir saat seçiniz.'
-                    ])->withInput();
+                $tcApplicationCount = Application::where('tc_no', $request->tc_no)->count();
+                if ($tcApplicationCount >= 2) {
+                    throw ValidationException::withMessages([
+                        'tc_no' => 'Aynı TC kimlik numarası ile en fazla 2 kursa başvurulabilir.',
+                    ]);
                 }
-            }
-        }
 
-        // --- Başvuru Oluştur ---
-        $application = new Application($data);
-        if (isset($request->session_id)) {
-            $application->session_id = $request->session_id;
-        } else {
-            $application->session_id = null;
+                if (Application::where('tc_no', $request->tc_no)
+                    ->where('education_program_id', $program->id)
+                    ->exists()) {
+                    throw ValidationException::withMessages([
+                        'education_program_id' => 'Bu TC kimlik numarası ile seçilen kursa zaten başvuru yapılmıştır.',
+                    ]);
+                }
+
+                $registered = Application::where('education_program_id', $program->id)->count();
+                if ($registered >= $program->capacity) {
+                    throw ValidationException::withMessages([
+                        'education_program_id' => 'Seçtiğiniz kurs için kontenjan dolmuştur. Lütfen başka bir kurs seçiniz.',
+                    ]);
+                }
+
+                if (!$program->is_custom_schedule && $request->session_id) {
+                    $session = EducationSession::where('id', $request->session_id)
+                        ->where('education_program_id', $program->id)
+                        ->firstOrFail();
+
+                    $sessionRegistered = Application::where('session_id', $session->id)->count();
+                    if ($sessionRegistered >= $session->quota) {
+                        throw ValidationException::withMessages([
+                            'session_id' => 'Seçtiğiniz saat aralığı için kontenjan dolmuştur. Lütfen başka bir saat seçiniz.',
+                        ]);
+                    }
+                }
+
+                $application = new Application($data);
+                $application->session_id = $request->session_id ?? null;
+                $application->save();
+            });
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
         }
-        $application->save();
 
         return redirect('/basvuru')->with('success', 'Başvurunuz başarıyla alınmıştır.');
     }
 
-    /**
-     * Belirli bir eğitim programına ait saat aralıklarını getir
-     */
     public function getSessions($educationProgramId)
     {
-        $program = EducationProgram::findOrFail($educationProgramId);
+        $program = EducationProgram::withCount('applications')->findOrFail($educationProgramId);
 
-        // Eğer kurs müdürlük tarafından planlanacaksa, özel mesaj dön
         if ($program->is_custom_schedule) {
             return response()->json([
                 [
@@ -94,23 +110,20 @@ class ApplicationController extends Controller
             ]);
         }
 
-        // Normal kurslar için session listesi
-        $sessions = DB::table('education_sessions')
-            ->where('education_program_id', $educationProgramId)
-            ->select('id', 'day', 'start_time', 'end_time', 'quota')
-            ->orderBy('start_time', 'asc')
-            ->get()
-            ->map(function ($s) {
-                $registered = Application::where('session_id', $s->id)->count();
-                $quota = (int) $s->quota;
-                $is_full = $registered >= $quota;
+        $programRegistered = $program->applications_count;
+        $programCapacity = (int) $program->capacity;
+        $programFull = $programRegistered >= $programCapacity;
 
+        $sessions = $program->sessions()
+            ->orderBy('start_time')
+            ->get()
+            ->map(function ($session) use ($programRegistered, $programCapacity, $programFull) {
                 return [
-                    'id' => $s->id,
-                    'time_range' => "{$s->day} | " . substr($s->start_time, 0, 5) . " - " . substr($s->end_time, 0, 5),
-                    'quota' => $quota,
-                    'registered' => $registered,
-                    'is_full' => $is_full,
+                    'id' => $session->id,
+                    'time_range' => "{$session->day} | " . substr($session->start_time, 0, 5) . " - " . substr($session->end_time, 0, 5),
+                    'quota' => $programCapacity,
+                    'registered' => $programRegistered,
+                    'is_full' => $programFull,
                 ];
             });
 

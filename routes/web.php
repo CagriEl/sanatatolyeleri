@@ -14,6 +14,14 @@ Route::get('/sessions/{program}', [ApplicationController::class, 'getSessions'])
 
 
 Route::get('/program/{id}', function ($id) {
-    $program = EducationProgram::select('id', 'title', 'is_custom_schedule')->findOrFail($id);
-    return response()->json($program);
+    $program = EducationProgram::withCount('applications')->findOrFail($id);
+
+    return response()->json([
+        'id' => $program->id,
+        'title' => $program->title,
+        'is_custom_schedule' => $program->is_custom_schedule,
+        'registered' => $program->applications_count,
+        'capacity' => $program->capacity,
+        'is_full' => $program->applications_count >= $program->capacity,
+    ]);
 });
