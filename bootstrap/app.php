@@ -11,7 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Global + web: covers public pages and Livewire endpoints
+        $middleware->append(\App\Http\Middleware\FixLivewireSubdirectoryUrls::class);
+        $middleware->web(append: [
+            \App\Http\Middleware\FixLivewireSubdirectoryUrls::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
