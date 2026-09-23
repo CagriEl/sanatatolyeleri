@@ -17,9 +17,9 @@ class ConsolidateMultiDayApplications extends Command
     protected $description = 'Çok günlü kurslardaki başvuruları eğitmen/program bazında birleştirir';
 
     private const HALK_OYUNLARI_TITLES = [
-        ['instructor' => 'Nebiye Şahiner', 'age_range' => '7-8', 'title' => 'Halk Oyunları — Nebiye Şahiner (7-8 Yaş)'],
-        ['instructor' => 'Aydın Elbasan', 'age_range' => '9-10', 'title' => 'Halk Oyunları — Aydın Elbasan (9-10 Yaş)'],
-        ['instructor' => 'Aydın Elbasan', 'age_range' => '18-50', 'title' => 'Halk Oyunları — Aydın Elbasan (18-50 Yaş)'],
+        ['instructor' => 'Gizem KURTİŞOĞLU', 'age_range' => '9-10', 'title' => 'Halk Oyunları — Gizem KURTİŞOĞLU (9-10 Yaş)'],
+        ['instructor' => 'Aydın Elbasan', 'age_range' => '14-55', 'title' => 'Halk Oyunları — Aydın Elbasan (14-55 Yaş)'],
+        ['instructor' => 'Nebiye Şahiner', 'age_range' => '18-50', 'title' => 'Yetişkin Halk Oyunları — Nebiye Şahiner (18-50 Yaş)'],
     ];
 
     public function handle(): int

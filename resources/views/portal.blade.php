@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Kırklareli Belediyesi Başvuru Portalı</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="https://kirklareli.bel.tr/dist/media/favicon/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Sora:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #12202e;
+            --muted: #5a6b7c;
+            --teal: #0e6b6e;
+            --teal-deep: #0a4f52;
+            --amber: #9a6b2f;
+            --amber-deep: #7a5424;
+            --snow: #f4f8fa;
+            --line: rgba(18, 32, 46, 0.12);
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            font-family: "Sora", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(ellipse 80% 55% at 12% 15%, rgba(14, 107, 110, 0.14), transparent 55%),
+                radial-gradient(ellipse 65% 45% at 95% 85%, rgba(154, 107, 47, 0.1), transparent 50%),
+                linear-gradient(160deg, #dfeaf0 0%, var(--snow) 48%, #e4eef2 100%);
+        }
+
+        .page {
+            min-height: 100%;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            padding: clamp(1.25rem, 3vw, 2.5rem);
+            max-width: 920px;
+            margin: 0 auto;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            opacity: 0;
+            animation: rise 0.6s ease forwards;
+        }
+
+        .brand img {
+            width: clamp(56px, 8vw, 72px);
+            height: auto;
+        }
+
+        .brand-text {
+            font-family: "Fraunces", serif;
+            font-size: clamp(1.1rem, 2.4vw, 1.45rem);
+            font-weight: 700;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+        }
+
+        .brand-text span {
+            display: block;
+            margin-top: 0.2rem;
+            font-family: "Sora", sans-serif;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--muted);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: clamp(2rem, 8vh, 4rem) 0;
+            opacity: 0;
+            animation: rise 0.75s ease 0.1s forwards;
+        }
+
+        h1 {
+            margin: 0 0 0.75rem;
+            font-family: "Fraunces", serif;
+            font-size: clamp(2.2rem, 6vw, 3.4rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1;
+        }
+
+        .lead {
+            margin: 0 0 2rem;
+            max-width: 28rem;
+            color: var(--muted);
+            font-size: clamp(0.98rem, 2vw, 1.08rem);
+            line-height: 1.55;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.9rem;
+            opacity: 0;
+            animation: rise 0.8s ease 0.2s forwards;
+        }
+
+        @media (max-width: 640px) {
+            .actions {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .action {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1.15rem 1.25rem;
+            text-decoration: none;
+            color: #fff;
+            border-radius: 4px;
+            transition: transform 0.22s ease, background 0.22s ease;
+            min-height: 100%;
+        }
+
+        .action:hover {
+            transform: translateY(-2px);
+            color: #fff;
+        }
+
+        .action-primary {
+            background: var(--teal);
+        }
+
+        .action-primary:hover {
+            background: var(--teal-deep);
+        }
+
+        .action-secondary {
+            background: var(--amber);
+        }
+
+        .action-secondary:hover {
+            background: var(--amber-deep);
+        }
+
+        .action strong {
+            display: block;
+            font-size: clamp(1rem, 2.2vw, 1.12rem);
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .action span {
+            display: block;
+            margin-top: 0.25rem;
+            font-size: 0.82rem;
+            font-weight: 400;
+            opacity: 0.88;
+        }
+
+        .action svg {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            transition: transform 0.22s ease;
+        }
+
+        .action:hover svg {
+            transform: translateX(3px);
+        }
+
+        .site-footer {
+            font-size: 0.78rem;
+            color: var(--muted);
+            line-height: 1.5;
+            opacity: 0;
+            animation: rise 0.6s ease 0.28s forwards;
+        }
+
+        @keyframes rise {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <header class="brand">
+            <img src="{{ asset('images/logo.png') }}" alt="Kırklareli Belediyesi">
+            <div class="brand-text">
+                Kırklareli Belediyesi
+                <span>Başvuru Portalı</span>
+            </div>
+        </header>
+
+        <section class="content">
+            <h1>Başvuru Seçin</h1>
+            <p class="lead">Devam etmek istediğiniz başvuru türünü seçiniz.</p>
+
+            <div class="actions">
+                <a class="action action-primary" href="{{ url('/sanat-atolye') }}">
+                    <div>
+                        <strong>Kış Dönemi Sanat Atölyeleri Başvuru</strong>
+                        <span>Bale, drama, halk oyunları ve diğer dersler</span>
+                    </div>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                        <path d="M5 12h14M13 6l6 6-6 6"/>
+                    </svg>
+                </a>
+
+                <a class="action action-secondary" href="{{ config('services.kart39.url', '/39kart') }}">
+                    <div>
+                        <strong>39 Kent Kart Başvuru</strong>
+                        <span>Öğrenci kent kartı başvurusu</span>
+                    </div>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                        <path d="M5 12h14M13 6l6 6-6 6"/>
+                    </svg>
+                </a>
+            </div>
+        </section>
+
+        <footer class="site-footer">
+            T.C. Kırklareli Belediye Başkanlığı<br>
+            Bilgi İşlem Müdürlüğü
+        </footer>
+    </main>
+</body>
+</html>

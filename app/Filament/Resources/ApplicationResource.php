@@ -15,7 +15,9 @@ use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BooleanColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Actions\Action;
+use Illuminate\Database\Eloquent\Builder;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 // Excel export
@@ -136,7 +138,49 @@ class ApplicationResource extends Resource
             ->filters([
                 SelectFilter::make('education_program_id')
                     ->label('Eğitim Programı')
-                    ->relationship('educationProgram', 'title'),
+                    ->relationship('educationProgram', 'title')
+                    ->searchable()
+                    ->preload(),
+
+                SelectFilter::make('instructor')
+                    ->label('Eğitmen')
+                    ->options(fn () => EducationProgram::query()
+                        ->whereNotNull('instructor')
+                        ->where('instructor', '!=', '')
+                        ->orderBy('instructor')
+                        ->distinct()
+                        ->pluck('instructor', 'instructor')
+                        ->all())
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (! empty($data['value'])) {
+                            $query->whereHas('educationProgram', fn (Builder $q) => $q->where('instructor', $data['value']));
+                        }
+
+                        return $query;
+                    }),
+
+                SelectFilter::make('location')
+                    ->label('Eğitim Yeri')
+                    ->options(fn () => EducationProgram::query()
+                        ->whereNotNull('location')
+                        ->where('location', '!=', '')
+                        ->orderBy('location')
+                        ->distinct()
+                        ->pluck('location', 'location')
+                        ->all())
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (! empty($data['value'])) {
+                            $query->whereHas('educationProgram', fn (Builder $q) => $q->where('location', $data['value']));
+                        }
+
+                        return $query;
+                    }),
+
+                TernaryFilter::make('is_approved')
+                    ->label('Onay Durumu')
+                    ->trueLabel('Onaylı')
+                    ->falseLabel('Onaysız')
+                    ->placeholder('Tümü'),
 
                 SelectFilter::make('session_id')
                     ->label('Saat Aralığı')

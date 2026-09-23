@@ -18,6 +18,8 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 
 class EducationProgramResource extends Resource
 {
@@ -135,6 +137,51 @@ class EducationProgramResource extends Resource
                     'success' => fn ($state) => $state,
                     'danger' => fn ($state) => ! $state,
                 ]),
+        ])
+        ->filters([
+            SelectFilter::make('instructor')
+                ->label('Eğitmen')
+                ->options(fn () => EducationProgram::query()
+                    ->whereNotNull('instructor')
+                    ->where('instructor', '!=', '')
+                    ->orderBy('instructor')
+                    ->distinct()
+                    ->pluck('instructor', 'instructor')
+                    ->all()),
+
+            SelectFilter::make('location')
+                ->label('Eğitim Yeri')
+                ->options(fn () => EducationProgram::query()
+                    ->whereNotNull('location')
+                    ->where('location', '!=', '')
+                    ->orderBy('location')
+                    ->distinct()
+                    ->pluck('location', 'location')
+                    ->all()),
+
+            TernaryFilter::make('is_open')
+                ->label('Başvuru Durumu')
+                ->trueLabel('Açık')
+                ->falseLabel('Kapalı')
+                ->placeholder('Tümü'),
+
+            SelectFilter::make('fullness')
+                ->label('Doluluk')
+                ->options([
+                    'available' => 'Yer Var',
+                    'full' => 'Dolu',
+                ])
+                ->query(function (Builder $query, array $data): Builder {
+                    return match ($data['value'] ?? null) {
+                        'full' => $query->whereRaw(
+                            '(select count(*) from applications where applications.education_program_id = education_programs.id) >= education_programs.capacity'
+                        ),
+                        'available' => $query->whereRaw(
+                            '(select count(*) from applications where applications.education_program_id = education_programs.id) < education_programs.capacity'
+                        ),
+                        default => $query,
+                    };
+                }),
         ])
         ->actions([
             EditAction::make(),

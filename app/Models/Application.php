@@ -6,45 +6,55 @@ use Illuminate\Database\Eloquent\Model;
 
 class Application extends Model
 {
-   
-   protected $fillable = [
-    'first_name',
-    'last_name',
-    'tc_no',
-    'birth_date',
-    'phone',
-    'parent_phone',
-    'parent_name',
-    'education_program_id',
-    'signature', 
-    'is_approved',
-    'session_id',
-    'email',
-];
+    protected $fillable = [
+        'first_name',
+        'last_name',
+        'tc_no',
+        'birth_date',
+        'phone',
+        'parent_phone',
+        'parent_name',
+        'education_program_id',
+        'signature',
+        'is_approved',
+        'session_id',
+        'email',
+    ];
 
-public function educationProgram()
-{
-    return $this->belongsTo(EducationProgram::class, 'education_program_id');
-}
+    protected $casts = [
+        'birth_date' => 'date',
+        'is_approved' => 'boolean',
+    ];
 
-public function session()
-{
-    return $this->belongsTo(\App\Models\EducationSession::class, 'session_id');
-        return $this->belongsTo(\App\Models\EducationSession::class, 'session_id');
+    public function educationProgram()
+    {
+        return $this->belongsTo(EducationProgram::class, 'education_program_id');
+    }
 
+    public function session()
+    {
+        return $this->belongsTo(EducationSession::class, 'session_id');
+    }
 
-}
+    protected static function booted()
+    {
+        static::created(function (Application $application) {
+            $application->educationProgram?->syncOpenStatus();
+        });
 
-protected static function booted()
-{
-    static::deleted(function ($application) {
-        if ($application->session_id) {
-            $session = \App\Models\EducationSession::find($application->session_id);
-            if ($session) {
-                $session->current_count = \App\Models\Application::where('session_id', $session->id)->count();
-                $session->save();
+        static::deleted(function (Application $application) {
+            if ($application->session_id) {
+                $session = EducationSession::find($application->session_id);
+                if ($session) {
+                    $session->current_count = Application::where('session_id', $session->id)->count();
+                    $session->save();
+                }
             }
-        }
-    });
-}
+
+            $program = EducationProgram::find($application->education_program_id);
+            if ($program && ! $program->is_full && ! $program->is_open) {
+                $program->update(['is_open' => true]);
+            }
+        });
+    }
 }

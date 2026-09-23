@@ -20,7 +20,7 @@ class ApplicationApprovedMail extends Mailable
 
     public function build()
     {
-        return $this->subject('2026 Yaz Okulu Başvurunuz Onaylandı')
+        return $this->subject('Kış Okulu Başvurunuz Onaylandı')
             ->view('emails.application-approved');
     }
 }

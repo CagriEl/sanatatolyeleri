@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'kart39' => [
+        'url' => env('KART39_URL', '/39kart'),
+    ],
+
+    'monitor' => [
+        'email' => env('MONITOR_EMAIL'),
+    ],
+
 ];

@@ -11,47 +11,88 @@ use Illuminate\Validation\ValidationException;
 
 class ApplicationController extends Controller
 {
+    public const MAX_APPLICATIONS_PER_TC = 2;
+
     public function create()
     {
-        $programs = EducationProgram::where('is_open', true)
+        $programs = EducationProgram::query()
+            ->where('is_open', true)
             ->withCount('applications')
-            ->orderBy('title')
-            ->get();
+            ->get()
+            ->filter(fn (EducationProgram $program) => $program->applications_count < $program->capacity)
+            ->sortBy(function (EducationProgram $program) {
+                if (preg_match('/^(\d+)/', (string) $program->age_range, $matches)) {
+                    return (int) $matches[1];
+                }
+
+                return 999;
+            })
+            ->values();
 
         return view('application.create', compact('programs'));
     }
 
     public function store(Request $request)
     {
-        $program = EducationProgram::findOrFail($request->education_program_id);
+        $request->validate([
+            'education_program_id' => 'required|exists:education_programs,id',
+        ]);
+
+        $program = EducationProgram::with('sessions')->findOrFail($request->education_program_id);
+
+        if (! $program->is_open || $program->is_full) {
+            throw ValidationException::withMessages([
+                'education_program_id' => 'Seçtiğiniz kurs başvuruya kapalı veya kontenjanı dolmuştur.',
+            ]);
+        }
 
         $rules = [
             'first_name' => 'required|string|max:255',
             'last_name'  => 'required|string|max:255',
             'email'      => 'required|email|max:255',
             'tc_no'      => 'required|digits:11',
-            'birth_date' => 'required|date',
+            'birth_date' => 'required|date|before:today',
             'phone'      => 'required|string|max:20',
             'parent_name' => 'required|string|max:255',
             'parent_phone' => 'required|string|max:20',
             'education_program_id' => 'required|exists:education_programs,id',
-            'signature' => 'required|string',
+            'signature' => 'required|string|min:100',
         ];
 
-        if (!$program->is_custom_schedule && $program->sessions()->count() <= 1) {
+        $sessionCount = $program->sessions->count();
+
+        if (! $program->is_custom_schedule && $sessionCount === 1) {
             $rules['session_id'] = 'required|exists:education_sessions,id';
         }
 
-        $data = $request->validate($rules);
+        $data = $request->validate($rules, [
+            'signature.required' => 'Lütfen veli imzasını çizin.',
+            'signature.min' => 'Lütfen veli imzasını çizin.',
+            'session_id.required' => 'Lütfen saat aralığı seçin.',
+            'birth_date.before' => 'Doğum tarihi bugünden önce olmalıdır.',
+        ]);
+
+        $age = EducationProgram::ageFromBirthDate($data['birth_date']);
+        if (! $program->acceptsAge($age)) {
+            throw ValidationException::withMessages([
+                'birth_date' => "Bu program {$program->ageRequirementLabel()} içindir. Başvuranın yaşı: {$age}.",
+            ]);
+        }
 
         try {
-            DB::transaction(function () use ($request, $program, $data) {
-                $program = EducationProgram::lockForUpdate()->findOrFail($program->id);
+            DB::transaction(function () use ($request, $program, $data, $sessionCount, $age) {
+                $program = EducationProgram::with('sessions')->lockForUpdate()->findOrFail($program->id);
+
+                if (! $program->is_open) {
+                    throw ValidationException::withMessages([
+                        'education_program_id' => 'Seçtiğiniz kurs başvuruya kapanmıştır.',
+                    ]);
+                }
 
                 $tcApplicationCount = Application::where('tc_no', $request->tc_no)->count();
-                if ($tcApplicationCount >= 2) {
+                if ($tcApplicationCount >= self::MAX_APPLICATIONS_PER_TC) {
                     throw ValidationException::withMessages([
-                        'tc_no' => 'Aynı TC kimlik numarası ile en fazla 2 kursa başvurulabilir.',
+                        'tc_no' => 'Aynı TC kimlik numarası ile en fazla ' . self::MAX_APPLICATIONS_PER_TC . ' kursa başvurulabilir.',
                     ]);
                 }
 
@@ -63,14 +104,21 @@ class ApplicationController extends Controller
                     ]);
                 }
 
+                if (! $program->acceptsAge($age)) {
+                    throw ValidationException::withMessages([
+                        'birth_date' => "Bu program {$program->ageRequirementLabel()} içindir. Başvuranın yaşı: {$age}.",
+                    ]);
+                }
+
                 $registered = Application::where('education_program_id', $program->id)->count();
                 if ($registered >= $program->capacity) {
+                    $program->update(['is_open' => false]);
                     throw ValidationException::withMessages([
                         'education_program_id' => 'Seçtiğiniz kurs için kontenjan dolmuştur. Lütfen başka bir kurs seçiniz.',
                     ]);
                 }
 
-                if (!$program->is_custom_schedule && $request->session_id && $program->sessions()->count() <= 1) {
+                if (! $program->is_custom_schedule && $request->session_id && $sessionCount === 1) {
                     $session = EducationSession::where('id', $request->session_id)
                         ->where('education_program_id', $program->id)
                         ->firstOrFail();
@@ -84,16 +132,44 @@ class ApplicationController extends Controller
                 }
 
                 $application = new Application($data);
-                $application->session_id = $program->sessions()->count() > 1
+                $application->session_id = $sessionCount > 1
                     ? null
-                    : ($request->session_id ?? null);
+                    : ($request->session_id ?? $program->sessions->first()?->id);
                 $application->save();
+
+                $program->syncOpenStatus();
             });
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
         }
 
         return redirect('/basvuru')->with('success', 'Başvurunuz başarıyla alınmıştır.');
+    }
+
+    public function checkTc(string $tcNo)
+    {
+        if (! preg_match('/^\d{11}$/', $tcNo)) {
+            return response()->json([
+                'valid' => false,
+                'count' => 0,
+                'remaining' => self::MAX_APPLICATIONS_PER_TC,
+                'max' => self::MAX_APPLICATIONS_PER_TC,
+                'message' => 'Geçerli bir TC kimlik numarası giriniz.',
+            ]);
+        }
+
+        $count = Application::where('tc_no', $tcNo)->count();
+        $remaining = max(0, self::MAX_APPLICATIONS_PER_TC - $count);
+
+        return response()->json([
+            'valid' => true,
+            'count' => $count,
+            'remaining' => $remaining,
+            'max' => self::MAX_APPLICATIONS_PER_TC,
+            'message' => $remaining === 0
+                ? 'Bu TC ile başvuru hakkınız dolmuştur (2/2).'
+                : "Bu TC ile {$count}/" . self::MAX_APPLICATIONS_PER_TC . " başvuru yapılmış. Kalan hak: {$remaining}.",
+        ]);
     }
 
     public function getSessions($educationProgramId)
@@ -134,14 +210,14 @@ class ApplicationController extends Controller
         }
 
         $sessions = $sessions->map(function ($session) use ($programRegistered, $programCapacity, $programFull) {
-                return [
-                    'id' => $session->id,
-                    'time_range' => "{$session->day} | " . substr($session->start_time, 0, 5) . " - " . substr($session->end_time, 0, 5),
-                    'quota' => $programCapacity,
-                    'registered' => $programRegistered,
-                    'is_full' => $programFull,
-                ];
-            });
+            return [
+                'id' => $session->id,
+                'time_range' => "{$session->day} | " . substr($session->start_time, 0, 5) . " - " . substr($session->end_time, 0, 5),
+                'quota' => $programCapacity,
+                'registered' => $programRegistered,
+                'is_full' => $programFull,
+            ];
+        });
 
         return response()->json($sessions);
     }
