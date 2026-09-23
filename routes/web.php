@@ -5,14 +5,11 @@ use App\Http\Controllers\ApplicationController;
 use App\Models\EducationProgram;
 
 Route::get('/', function () {
-    return view('portal');
-});
-
-Route::get('/sanat-atolye', function () {
     return view('sanat-atolye');
 });
 
-Route::redirect('/kis-okulu', '/sanat-atolye');
+Route::redirect('/sanat-atolye', '/');
+Route::redirect('/kis-okulu', '/');
 
 Route::get('/basvuru', [ApplicationController::class, 'create']);
 Route::post('/basvuru', [ApplicationController::class, 'store']);

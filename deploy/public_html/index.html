@@ -17,7 +17,6 @@
             --amber: #9a6b2f;
             --amber-deep: #7a5424;
             --snow: #f4f8fa;
-            --line: rgba(18, 32, 46, 0.12);
         }
 
         * { box-sizing: border-box; }
@@ -112,9 +111,7 @@
         }
 
         @media (max-width: 640px) {
-            .actions {
-                grid-template-columns: 1fr;
-            }
+            .actions { grid-template-columns: 1fr; }
         }
 
         .action {
@@ -135,21 +132,10 @@
             color: #fff;
         }
 
-        .action-primary {
-            background: var(--teal);
-        }
-
-        .action-primary:hover {
-            background: var(--teal-deep);
-        }
-
-        .action-secondary {
-            background: var(--amber);
-        }
-
-        .action-secondary:hover {
-            background: var(--amber-deep);
-        }
+        .action-primary { background: var(--teal); }
+        .action-primary:hover { background: var(--teal-deep); }
+        .action-secondary { background: var(--amber); }
+        .action-secondary:hover { background: var(--amber-deep); }
 
         .action strong {
             display: block;
@@ -173,9 +159,7 @@
             transition: transform 0.22s ease;
         }
 
-        .action:hover svg {
-            transform: translateX(3px);
-        }
+        .action:hover svg { transform: translateX(3px); }
 
         .site-footer {
             font-size: 0.78rem;
@@ -186,21 +170,15 @@
         }
 
         @keyframes rise {
-            from {
-                opacity: 0;
-                transform: translateY(16px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
     <main class="page">
         <header class="brand">
-            <img src="{{ asset('images/logo.png') }}" alt="Kırklareli Belediyesi">
+            <img src="images/logo.png" alt="Kırklareli Belediyesi" onerror="this.style.display='none'">
             <div class="brand-text">
                 Kırklareli Belediyesi
                 <span>Başvuru Portalı</span>
@@ -212,7 +190,7 @@
             <p class="lead">Devam etmek istediğiniz başvuru türünü seçiniz.</p>
 
             <div class="actions">
-                <a class="action action-primary" href="{{ url('/sanat-atolye') }}">
+                <a class="action action-primary" href="/sanat-atolye/">
                     <div>
                         <strong>Kış Dönemi Sanat Atölyeleri Başvuru</strong>
                         <span>Bale, drama, halk oyunları ve diğer dersler</span>
@@ -222,7 +200,7 @@
                     </svg>
                 </a>
 
-                <a class="action action-secondary" href="{{ config('services.kart39.url', '/39kart') }}">
+                <a class="action action-secondary" href="/39kart/">
                     <div>
                         <strong>39 Kent Kart Başvuru</strong>
                         <span>Öğrenci kent kartı başvurusu</span>

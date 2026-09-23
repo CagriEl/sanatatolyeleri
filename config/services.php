@@ -36,7 +36,11 @@ return [
     ],
 
     'kart39' => [
-        'url' => env('KART39_URL', '/39kart'),
+        'url' => env('KART39_URL', '/39kart/'),
+    ],
+
+    'portal' => [
+        'url' => env('PORTAL_URL', '/'),
     ],
 
     'monitor' => [

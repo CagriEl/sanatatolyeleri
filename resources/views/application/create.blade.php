@@ -331,7 +331,7 @@
                 <span>Kırklareli Belediyesi</span>
             </div>
         </a>
-        <a class="back-link" href="{{ url('/sanat-atolye') }}">← Geri</a>
+        <a class="back-link" href="{{ url('/') }}">← Geri</a>
     </div>
 
     <div class="panel">

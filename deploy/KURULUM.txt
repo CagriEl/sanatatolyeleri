@@ -1,0 +1,41 @@
+Sunucu dizini (public_html):
+
+  public_html/
+  ├── index.html              ← bu repodan: deploy/public_html/index.html
+  ├── images/
+  │   └── logo.png            ← belediye logosu
+  ├── 39kart/                 ← mevcut 39 Kent Kart uygulaması
+  └── sanat-atolye/           ← bu Laravel proje (git clone / upload)
+      ├── .htaccess           ← deploy/sanat-atolye.htaccess dosyasını buraya kopyalayın (ad: .htaccess)
+      ├── public/
+      ├── app/
+      └── ...
+
+Adımlar:
+1. Mevcut 39 kart dosyalarını public_html/39kart/ altına taşıyın.
+2. deploy/public_html/index.html dosyasını public_html/index.html olarak koyun.
+3. Logo için public_html/images/logo.png ekleyin.
+4. Bu Laravel projesini public_html/sanat-atolye/ altına alın.
+5. deploy/sanat-atolye.htaccess → public_html/sanat-atolye/.htaccess olarak kopyalayın.
+6. sanat-atolye/.env ayarları:
+
+   APP_URL=https://kayit.kirklareli.bel.tr/sanat-atolye
+   PORTAL_URL=https://kayit.kirklareli.bel.tr/
+   KART39_URL=/39kart/
+   MONITOR_EMAIL=...
+
+7. Komutlar (sanat-atolye içinde):
+   composer install --no-dev --optimize-autoloader
+   php artisan migrate --force
+   php artisan db:seed --class=EducationProgramSeeder --force   # dikkat: kayıtları siler
+   php artisan optimize:clear
+   php artisan config:cache
+   php artisan route:cache
+   php artisan view:cache
+   chmod -R 775 storage bootstrap/cache
+
+Sonuç:
+  https://kayit.kirklareli.bel.tr/              → portal
+  https://kayit.kirklareli.bel.tr/sanat-atolye/ → sanat atölyeleri
+  https://kayit.kirklareli.bel.tr/39kart/       → 39 kent kart
+  https://kayit.kirklareli.bel.tr/sanat-atolye/admin → yönetim

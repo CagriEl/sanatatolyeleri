@@ -225,7 +225,7 @@
                     <span>Kültür Sanat Evi &amp; AKM</span>
                 </div>
             </a>
-            <a class="back-link" href="{{ url('/') }}">← Portal</a>
+            <a class="back-link" href="{{ config('services.portal.url', '/') }}">← Portal</a>
         </header>
 
         <section class="stage">
